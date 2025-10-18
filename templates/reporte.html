@@ -1,0 +1,116 @@
+<html>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="topbar">
+        <div class="container">
+            <h1>Reporte de Ventas</h1>
+        </div>
+    </header>
+
+    <main class="container main-card">
+        <section class="summary">
+            <div class="card small">
+                <h3>Total vendido</h3>
+                <p class="big">${{ total_vendido }}</p>
+            </div>
+            <div class="card small">
+                <h3>Producto más vendido</h3>
+                <p class="big">{{ producto_mas_vendido }}</p>
+            </div>
+        </section>
+
+        <section class="chart-container">
+            <canvas id="ventasChart"></canvas>
+        </section>
+
+        <div class="links">
+            <a class="btn" href="/">Volver al formulario</a>
+        </div>
+    </main>
+
+    <script>
+        const labels = {{ fechas | tojson }};
+        const dataVals = {{ totales | tojson }};
+        // detalle_por_fecha: { "2025-08-20": [ {product: "...", value: 12.3}, ... ] }
+        const detalle = {{ detalle_por_fecha | tojson }};
+
+        const ctx = document.getElementById('ventasChart').getContext('2d');
+
+        const ventasChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ventas Diarias (MXN)',
+                    data: dataVals,
+                    backgroundColor: 'rgba(45, 212, 191, 0.45)',
+                    borderColor: 'rgba(45, 212, 191, 1)',
+                    borderWidth: 1,
+                    hoverBackgroundColor: 'rgba(45, 212, 191, 0.65)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#9be7e0' },
+                        grid: { color: 'rgba(255,255,255,0.03)' }
+                    },
+                    y: {
+                        ticks: { color: '#9be7e0' },
+                        grid: { color: 'rgba(255,255,255,0.03)' },
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#bff0ee'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f1720',
+                        titleColor: '#bff0ee',
+                        bodyColor: '#e6fffb',
+                        footerColor: '#c8fff6',
+                        displayColors: false,
+                        callbacks: {
+                            // title = la fecha
+                            title: function(tooltipItems) {
+                                return tooltipItems[0].label;
+                            },
+                            // label = el valor principal (monto)
+                            label: function(context) {
+                                let v = context.parsed.y;
+                                return 'Total: $' + v.toFixed(2);
+                            },
+                            // footer: mostramos el detalle por producto de esa fecha
+                            footer: function(tooltipItems) {
+                                const fecha = tooltipItems[0].label;
+                                const lista = detalle[fecha];
+                                if (!lista || lista.length === 0) return [];
+                                // ordenar por mayor venta
+                                lista.sort((a,b)=>b.value - a.value);
+                                // devolver array de strings (cada elemento es una línea en el footer)
+                                return lista.map(it => `${it.product}: $${it.value.toFixed(2)}`);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // cursor pointer al pasar sobre barras
+        document.getElementById('ventasChart').style.cursor = 'pointer';
+
+    </script>
+</body>
+</html>
