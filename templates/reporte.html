@@ -1,116 +1,89 @@
 <html>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <title>Sales Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 30px;
+        }
+        canvas {
+            max-width: 800px;
+            margin: 30px auto;
+            display: block;
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        a {
+            color: #00bcd4;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
 <body>
-    <header class="topbar">
-        <div class="container">
-            <h1>Reporte de Ventas</h1>
-        </div>
-    </header>
+    <h1>Sales Report</h1>
 
-    <main class="container main-card">
-        <section class="summary">
-            <div class="card small">
-                <h3>Total vendido</h3>
-                <p class="big">${{ total_vendido }}</p>
-            </div>
-            <div class="card small">
-                <h3>Producto más vendido</h3>
-                <p class="big">{{ producto_mas_vendido }}</p>
-            </div>
-        </section>
+    <h3>Total Sales: ${{ total_sales }}</h3>
+    <h3>Best-Selling Product: {{ best_selling_product }}</h3>
 
-        <section class="chart-container">
-            <canvas id="ventasChart"></canvas>
-        </section>
+    <canvas id="salesChart"></canvas>
 
-        <div class="links">
-            <a class="btn" href="/">Volver al formulario</a>
-        </div>
-    </main>
+    <a href="/">← Back to Home</a>
 
     <script>
-        const labels = {{ fechas | tojson }};
-        const dataVals = {{ totales | tojson }};
-        // detalle_por_fecha: { "2025-08-20": [ {product: "...", value: 12.3}, ... ] }
-        const detalle = {{ detalle_por_fecha | tojson }};
+        const ctx = document.getElementById('salesChart');
 
-        const ctx = document.getElementById('ventasChart').getContext('2d');
-
-        const ventasChart = new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: {{ dates | safe }},
                 datasets: [{
-                    label: 'Ventas Diarias (MXN)',
-                    data: dataVals,
-                    backgroundColor: 'rgba(45, 212, 191, 0.45)',
-                    borderColor: 'rgba(45, 212, 191, 1)',
-                    borderWidth: 1,
-                    hoverBackgroundColor: 'rgba(45, 212, 191, 0.65)'
+                    label: 'Sales by Date ($)',
+                    data: {{ totals | safe }},
+                    backgroundColor: '#00bcd4',
+                    borderColor: '#0097a7',
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const date = context.label;
+                                const details = {{ detail_per_date | safe }};
+                                const products = details[date] || [];
+                                const lines = products.map(p => `${p.product}: $${p.value.toFixed(2)}`);
+                                return lines.length ? lines : [`No data for ${date}`];
+                            }
+                        }
+                    },
+                    legend: {
+                        labels: { color: '#e0e0e0' }
+                    }
                 },
                 scales: {
                     x: {
-                        ticks: { color: '#9be7e0' },
-                        grid: { color: 'rgba(255,255,255,0.03)' }
+                        ticks: { color: '#e0e0e0' },
+                        grid: { color: '#333' }
                     },
                     y: {
-                        ticks: { color: '#9be7e0' },
-                        grid: { color: 'rgba(255,255,255,0.03)' },
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: '#bff0ee'
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: '#0f1720',
-                        titleColor: '#bff0ee',
-                        bodyColor: '#e6fffb',
-                        footerColor: '#c8fff6',
-                        displayColors: false,
-                        callbacks: {
-                            // title = la fecha
-                            title: function(tooltipItems) {
-                                return tooltipItems[0].label;
-                            },
-                            // label = el valor principal (monto)
-                            label: function(context) {
-                                let v = context.parsed.y;
-                                return 'Total: $' + v.toFixed(2);
-                            },
-                            // footer: mostramos el detalle por producto de esa fecha
-                            footer: function(tooltipItems) {
-                                const fecha = tooltipItems[0].label;
-                                const lista = detalle[fecha];
-                                if (!lista || lista.length === 0) return [];
-                                // ordenar por mayor venta
-                                lista.sort((a,b)=>b.value - a.value);
-                                // devolver array de strings (cada elemento es una línea en el footer)
-                                return lista.map(it => `${it.product}: $${it.value.toFixed(2)}`);
-                            }
-                        }
+                        beginAtZero: true,
+                        ticks: { color: '#e0e0e0' },
+                        grid: { color: '#333' }
                     }
                 }
             }
         });
-
-        // cursor pointer al pasar sobre barras
-        document.getElementById('ventasChart').style.cursor = 'pointer';
-
     </script>
 </body>
 </html>

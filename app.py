@@ -3,84 +3,84 @@ import pandas as pd
 import os
 
 app = Flask(__name__)
-ARCHIVO_VENTAS = 'ventas.xlsx'
+SALES_FILE = 'sales.xlsx'
 
-def crear_archivo_vacio():
-    if not os.path.exists(ARCHIVO_VENTAS):
-        df = pd.DataFrame(columns=['Fecha', 'Producto', 'Cantidad', 'Precio Unitario'])
-        df.to_excel(ARCHIVO_VENTAS, index=False)
+def create_empty_file():
+    """Create an empty Excel file with the correct columns if it doesn’t exist."""
+    if not os.path.exists(SALES_FILE):
+        df = pd.DataFrame(columns=['Date', 'Product', 'Quantity', 'Unit Price'])
+        df.to_excel(SALES_FILE, index=False)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        fecha = request.form['fecha']
-        producto = request.form['producto']
-        cantidad = int(request.form['cantidad'])
-        precio = float(request.form['precio'])
+        date = request.form['fecha']
+        product = request.form['producto']
+        quantity = int(request.form['cantidad'])
+        price = float(request.form['precio'])
 
-        crear_archivo_vacio()
-        df = pd.read_excel(ARCHIVO_VENTAS, engine='openpyxl')
+        create_empty_file()
+        df = pd.read_excel(SALES_FILE, engine='openpyxl')
 
-        nuevo = pd.DataFrame([{
-            'Fecha': fecha,
-            'Producto': producto,
-            'Cantidad': cantidad,
-            'Precio Unitario': precio
+        new_entry = pd.DataFrame([{
+            'Date': date,
+            'Product': product,
+            'Quantity': quantity,
+            'Unit Price': price
         }])
 
-        df = pd.concat([df, nuevo], ignore_index=True)
-        df.to_excel(ARCHIVO_VENTAS, index=False)
+        df = pd.concat([df, new_entry], ignore_index=True)
+        df.to_excel(SALES_FILE, index=False)
 
-        return redirect(url_for('reporte'))
+        return redirect(url_for('report'))
 
     return render_template('index.html')
 
 @app.route('/reporte')
-def reporte():
-    crear_archivo_vacio()
-    df = pd.read_excel(ARCHIVO_VENTAS, engine='openpyxl')
+def report():
+    create_empty_file()
+    df = pd.read_excel(SALES_FILE, engine='openpyxl')
 
     if df.empty:
-        return "No hay datos para mostrar"
+        return "No data available to display."
 
-    # Asegurar tipos y columnas
-    df['Cantidad'] = pd.to_numeric(df['Cantidad'], errors='coerce').fillna(0)
-    df['Precio Unitario'] = pd.to_numeric(df['Precio Unitario'], errors='coerce').fillna(0)
+    # Ensure data types and calculate totals
+    df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce').fillna(0)
+    df['Unit Price'] = pd.to_numeric(df['Unit Price'], errors='coerce').fillna(0)
 
-    df['Total Venta'] = df['Cantidad'] * df['Precio Unitario']
+    df['Total Sale'] = df['Quantity'] * df['Unit Price']
 
-    total_vendido = float(df['Total Venta'].sum())
-    producto_mas_vendido = df.groupby('Producto')['Cantidad'].sum().idxmax()
+    total_sales = float(df['Total Sale'].sum())
+    best_selling_product = df.groupby('Product')['Quantity'].sum().idxmax()
 
-    # Ventas diarias: suma por fecha
-    ventas_diarias = df.groupby('Fecha')['Total Venta'].sum().sort_index()
+    # Daily sales summary
+    daily_sales = df.groupby('Date')['Total Sale'].sum().sort_index()
 
-    # Crear detalle por fecha: lista de productos y montos para cada fecha
-    ventas_detalle = (
-        df.groupby(['Fecha', 'Producto'])['Total Venta']
+    # Detailed data per date
+    sales_detail = (
+        df.groupby(['Date', 'Product'])['Total Sale']
         .sum()
         .reset_index()
     )
 
-    detalle_por_fecha = {}
-    for _, row in ventas_detalle.iterrows():
-        fecha = str(row['Fecha'])
-        prod = str(row['Producto'])
-        monto = float(row['Total Venta'])
-        detalle_por_fecha.setdefault(fecha, []).append({'product': prod, 'value': monto})
+    detail_per_date = {}
+    for _, row in sales_detail.iterrows():
+        date = str(row['Date'])
+        product = str(row['Product'])
+        amount = float(row['Total Sale'])
+        detail_per_date.setdefault(date, []).append({'product': product, 'value': amount})
 
-    fechas = [str(f) for f in ventas_diarias.index.tolist()]
-    totales = [float(x) for x in ventas_diarias.values.tolist()]
+    dates = [str(f) for f in daily_sales.index.tolist()]
+    totals = [float(x) for x in daily_sales.values.tolist()]
 
     return render_template(
         'reporte.html',
-        total_vendido=round(total_vendido, 2),
-        producto_mas_vendido=producto_mas_vendido,
-        fechas=fechas,
-        totales=totales,
-        detalle_por_fecha=detalle_por_fecha
+        total_sales=round(total_sales, 2),
+        best_selling_product=best_selling_product,
+        dates=dates,
+        totals=totals,
+        detail_per_date=detail_per_date
     )
 
 if __name__ == '__main__':
     app.run()
-
