@@ -1,89 +1,113 @@
-<html>
-    
-    <title>Sales Report</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            background-color: #121212;
-            color: #e0e0e0;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 30px;
-        }
-        canvas {
-            max-width: 800px;
-            margin: 30px auto;
-            display: block;
-            background: #1e1e1e;
-            border-radius: 10px;
-            padding: 15px;
-        }
-        a {
-            color: #00bcd4;
-            text-decoration: none;
-            font-size: 18px;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-    </style>
-<body>
-    <h1>Sales Report</h1>
+{% extends "base.html" %}
 
-    <h3>Total Sales: ${{ total_sales }}</h3>
-    <h3>Best-Selling Product: {{ best_selling_product }}</h3>
+{% block title %}Reporte de Ventas{% endblock %}
 
-    <canvas id="salesChart"></canvas>
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">Reporte de Ventas</h2>
+        
+        <!-- Resumen General -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card bg-primary text-white">
+                    <h5>Ventas Totales</h5>
+                    <h3>{{ format_currency(total_sales) }}</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-success text-white">
+                    <h5>Producto Más Vendido</h5>
+                    <h4>{{ best_selling_product }}</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-info text-white">
+                    <h5>Total Transacciones</h5>
+                    <h3>{{ stats.total_transactions }}</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-warning text-dark">
+                    <h5>Productos Únicos</h5>
+                    <h3>{{ stats.unique_products }}</h3>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ventas Diarias -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Ventas Diarias</h5>
+            </div>
+            <div class="card-body">
+                {% if daily_sales.dates %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Total Ventas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for date, total in zip(daily_sales.dates, daily_sales.totals) %}
+                            <tr>
+                                <td>{{ date }}</td>
+                                <td>{{ format_currency(total) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted">No hay datos de ventas diarias disponibles.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Ventas por Producto -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Ventas por Producto</h5>
+            </div>
+            <div class="card-body">
+                {% if sales_by_product %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad Vendida</th>
+                                <th>Total Ventas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sales_by_product %}
+                            <tr>
+                                <td>{{ item.product }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ format_currency(item.total) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted">No hay datos de ventas por producto disponibles.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="text-center">
+            <a href="{{ url_for('index') }}" class="btn btn-primary">Agregar Nueva Venta</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-    <a href="/">← Back to Home</a>
-
-    <script>
-        const ctx = document.getElementById('salesChart');
-
-        const chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: {{ dates | safe }},
-                datasets: [{
-                    label: 'Sales by Date ($)',
-                    data: {{ totals | safe }},
-                    backgroundColor: '#00bcd4',
-                    borderColor: '#0097a7',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const date = context.label;
-                                const details = {{ detail_per_date | safe }};
-                                const products = details[date] || [];
-                                const lines = products.map(p => `${p.product}: $${p.value.toFixed(2)}`);
-                                return lines.length ? lines : [`No data for ${date}`];
-                            }
-                        }
-                    },
-                    legend: {
-                        labels: { color: '#e0e0e0' }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: { color: '#e0e0e0' },
-                        grid: { color: '#333' }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        ticks: { color: '#e0e0e0' },
-                        grid: { color: '#333' }
-                    }
-                }
-            }
-        });
-    </script>
-</body>
-</html>
+{% block scripts %}
+<script>
+    // Ejemplo de gráfico usando Chart.js (opcional)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Aquí puedes agregar gráficos si lo deseas
+        console.log('Página de reporte cargada');
+    });
+</script>
+{% endblock %}
